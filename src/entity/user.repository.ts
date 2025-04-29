@@ -14,6 +14,20 @@ function create(
   return db.user.create({ data: { name, email, password, activationToken } });
 }
 
+function changeName(email: string, newName: string) {
+  return db.user.update({
+    where: { email },
+    data: { name: newName },
+  });
+}
+
+function changePassword(email: string, newPassword: string) {
+  return db.user.update({
+    where: { email },
+    data: { password: newPassword },
+  });
+}
+
 function activate(email: string): Promise<User> {
   return db.user.update({
     where: { email },
@@ -21,4 +35,10 @@ function activate(email: string): Promise<User> {
   });
 }
 
-export const userRepository = { create, getByEmail, activate };
+export const userRepository = {
+  create,
+  getByEmail,
+  activate,
+  changeName,
+  changePassword,
+};

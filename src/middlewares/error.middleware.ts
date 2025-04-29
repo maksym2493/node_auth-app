@@ -16,6 +16,5 @@ export function errorMiddleware(
     return;
   }
 
-  _next(err);
-  // res.status(500).json({ message: 'Internal Server Error' });
+  res.status(500).json({ message: 'Internal Server Error' });
 }

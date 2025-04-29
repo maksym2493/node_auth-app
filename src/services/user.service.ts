@@ -1,12 +1,11 @@
-import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 
 import { User } from '@prisma/client';
-import { NormalizedUser } from '../types/NormalizedUser.js';
-import { userRepository } from '../entity/user.repository.js';
-
-import { mailer } from '../utils/mailer.js';
 import { ApiError } from '../exceptions/api.error.js';
+import { NormalizedUser } from '../types/NormalizedUser.js';
+
+import { authService } from './auth.service.js';
+import { userRepository } from '../entity/user.repository.js';
 
 type ValidationResult = string | undefined;
 
@@ -31,62 +30,73 @@ function normalize({ id, name, email }: User): NormalizedUser {
   return { id, name, email };
 }
 
-async function register(
-  name: string,
-  email: string,
-  password: string,
+async function changeName(
+  { email, name }: User,
+  newName: string,
 ): Promise<NormalizedUser> {
-  const errors = {
-    name: validateName(name),
-    email: validateEmail(email),
-    password: validatePassword(password),
-  };
-
-  if (Object.values(errors).some((error) => error)) {
-    throw ApiError.badRequest('Validation error', errors);
-  }
-
-  const existedUser = await userRepository.getByEmail(email);
-
-  if (existedUser) {
-    throw ApiError.badRequest('Validation error', {
-      email: 'Email is already taken',
+  if (name === newName) {
+    throw ApiError.badRequest('Invalid name', {
+      newNme: 'The current name is the same as the new one',
     });
   }
 
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-  const activationToken = crypto.randomBytes(32).toString('hex');
+  const newUser = await userRepository.changeName(email, newName);
 
-  await mailer.sendActivationLink(email, activationToken);
-
-  const user = await userRepository.create(
-    name,
-    email,
-    hashedPassword,
-    activationToken,
-  );
-
-  return normalize(user);
+  return normalize(newUser);
 }
 
-async function activate(
-  email: string,
-  activationToken: string,
-): Promise<NormalizedUser> {
-  const user = await userRepository.getByEmail(email);
+async function changePassword(
+  user: User,
 
-  if (!user || user.activationToken !== activationToken) {
-    throw ApiError.notFound();
+  password: string,
+  newPassword: string,
+  passwordConfirmation: string,
+): Promise<NormalizedUser> {
+  const validationError = userService.validatePassword(newPassword);
+
+  if (validationError) {
+    throw ApiError.badRequest('Invalid credentials', {
+      newPassword: validationError,
+    });
   }
 
-  const activatedUser = await userRepository.activate(email);
+  if (newPassword !== passwordConfirmation) {
+    throw ApiError.badRequest('Invalid credentials', {
+      passwordConfirmation:
+        'Password confirmation does not match the new password',
+    });
+  }
 
-  return normalize(activatedUser);
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordValid) {
+    throw ApiError.badRequest('Invalid credentials', {
+      password: 'The current password you entered is incorrect',
+    });
+  }
+
+  if (password === newPassword) {
+    throw ApiError.badRequest('Invalid credentials', {
+      newPassword: 'The new password must be different from the current one',
+    });
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  const newUser = await userRepository.changePassword(
+    user.email,
+    hashedPassword,
+  );
+
+  return userService.normalize(newUser);
 }
 
 export const userService = {
-  register,
-  activate,
   normalize,
+  validateName,
+  validateEmail,
+  validatePassword,
+
+  changeName,
+  changePassword,
 };

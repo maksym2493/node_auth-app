@@ -10,7 +10,7 @@ function generateAccessToken(normilizedUser: NormalizedUser) {
   });
 }
 
-function verifyAccessToken(accessToken: string) {
+function validateAccessToken(accessToken: string) {
   try {
     return jsonwebtoken.verify(accessToken, JWT_ACCESS_KEY);
   } catch (_) {}
@@ -22,7 +22,7 @@ function generateRefreshToken(normilizedUser: NormalizedUser) {
   });
 }
 
-function verifyRefreshToken(accessToken: string) {
+function validateRefreshToken(accessToken: string) {
   try {
     return jsonwebtoken.verify(accessToken, JWT_REFRESH_KEY);
   } catch (_) {}
@@ -30,7 +30,7 @@ function verifyRefreshToken(accessToken: string) {
 
 export const jwt = {
   generateAccessToken,
-  verifyAccessToken,
+  validateAccessToken,
   generateRefreshToken,
-  verifyRefreshToken,
+  validateRefreshToken,
 };

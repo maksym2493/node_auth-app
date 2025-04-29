@@ -7,21 +7,20 @@ import { userRepository } from '../entity/user.repository.js';
 import { refreshTokenRepository } from '../entity/refreshToken.repository.js';
 
 import { jwt } from '../utils/jwt.js';
-import { ApiError } from '../exceptions/api.error.js';
 import { NormalizedUser } from '../types/NormalizedUser.js';
 
 const register: RequestHandler = async (req, res) => {
   const { email, password } = req.body;
   const name = (req.body.name || '').trim();
 
-  await userService.register(name, email, password);
+  await authService.register(name, email, password);
 
   res.json({ message: 'OK' });
 };
 
 const activate: RequestHandler = async (req, res) => {
   const { email, activationToken } = req.params;
-  const normalizedUser = await userService.activate(email, activationToken);
+  const normalizedUser = await authService.activate(email, activationToken);
 
   await sendAuthentication(res, normalizedUser);
 };
@@ -35,34 +34,15 @@ const login: RequestHandler = async (req, res) => {
 
 const refresh: RequestHandler = async (req, res) => {
   const refreshToken = req.cookies?.refreshToken || '';
+  const normalizedUser = await authService.refresh(refreshToken);
 
-  const extractedData = jwt.verifyRefreshToken(refreshToken) as
-    | NormalizedUser
-    | undefined;
-
-  if (!refreshToken || !extractedData) {
-    throw ApiError.unauthorized('Invalid token');
-  }
-
-  const user = await userRepository.getByEmail(extractedData.email);
-
-  if (!user) {
-    throw ApiError.unauthorized('Invalid token');
-  }
-
-  await sendAuthentication(res, userService.normalize(user));
+  await sendAuthentication(res, normalizedUser);
 };
 
 const logout: RequestHandler = async (req, res) => {
   const refreshToken = req.cookies?.refreshToken || '';
 
-  const userData = jwt.verifyRefreshToken(refreshToken) as
-    | NormalizedUser
-    | undefined;
-
-  if (userData) {
-    await refreshTokenRepository.deleteByUserId(userData.id);
-  }
+  await authService.logout(refreshToken);
 
   res.clearCookie('refreshToken');
   res.sendStatus(204);
@@ -87,8 +67,9 @@ async function sendAuthentication(
 
   res.json({
     message: 'OK',
-    user: normalizedUser,
+
     accessToken,
+    user: normalizedUser,
   });
 }
 
