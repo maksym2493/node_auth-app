@@ -27,4 +27,7 @@ const changePassword: RequestHandler = async (req, res) => {
   });
 };
 
-export const userController = { changeName, changePassword };
+export const userController = {
+  changeName,
+  changePassword,
+};

@@ -4,7 +4,7 @@ import { jwt } from '../utils/jwt.js';
 import { mailer } from '../utils/mailer.js';
 import { ApiError } from '../exceptions/api.error.js';
 
-import { TokenType } from '@prisma/client';
+import { TokenType, User } from '@prisma/client';
 import { NormalizedUser } from '../types/NormalizedUser.js';
 
 import { userService } from './user.service.js';
@@ -129,7 +129,7 @@ async function requestPasswordReset(email: string): Promise<void> {
 
   const resetToken = tokenService.generate();
 
-  await mailer.sendResetLink(email, resetToken);
+  await mailer.sendResetPasswordLink(email, resetToken);
   await tokenService.create(user.id, resetToken, TokenType.resetPassword);
 }
 
@@ -182,6 +182,98 @@ async function resetPassword(
   return userService.normalize(updatedUser);
 }
 
+async function requestEmailChange(
+  user: User,
+  password: string,
+  newEmail: string,
+): Promise<void> {
+  const errors = {
+    newEmail: userService.validateEmail(newEmail),
+    password: userService.validatePassword(password),
+  };
+
+  if (newEmail === user.email) {
+    errors.newEmail = 'New email must be different from the current one.';
+  }
+
+  if (Object.values(errors).some((error) => error)) {
+    throw ApiError.badRequest('Invalid credentials', errors);
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    throw ApiError.unauthorized('Invalid credentials', {
+      password: 'Invalid password',
+    });
+  }
+
+  const existedUser = await userRepository.getByEmail(newEmail);
+  if (existedUser) {
+    throw ApiError.unauthorized('Invalid credentials', {
+      newEmail: 'Email is already taken',
+    });
+  }
+
+  const existedToken = await tokenRepository.getByUserId(
+    user.id,
+    TokenType.changeEmail,
+  );
+
+  if (existedToken) {
+    if (existedToken.payload === newEmail) {
+      await mailer.sendChangeEmailLink(newEmail, existedToken.token);
+      return;
+    }
+
+    await tokenRepository.deleteById(existedToken.id);
+  }
+
+  let token = await tokenRepository.getByPayload(newEmail);
+
+  if (token) {
+    if (token.userId === user.id) {
+      await mailer.sendChangeEmailLink(newEmail, token.token);
+      return;
+    }
+
+    await tokenRepository.deleteById(token.id);
+  }
+
+  const changeEmailToken = tokenService.generate();
+
+  token = await tokenService.create(
+    user.id,
+    changeEmailToken,
+    TokenType.changeEmail,
+    newEmail,
+  );
+
+  await mailer.sendChangeEmailLink(newEmail, changeEmailToken);
+}
+
+async function changeEmail(changeEmailToken: string): Promise<NormalizedUser> {
+  const token = await tokenService.getByToken(changeEmailToken);
+
+  if (!token || !token.payload) {
+    throw ApiError.notFound();
+  }
+
+  const user = await userRepository.getById(token.userId);
+
+  if (!user) {
+    throw ApiError.notFound();
+  }
+
+  const email = user.email;
+  const newEmail = token.payload;
+  const newUser = await userRepository.changeEmail(token.userId, newEmail);
+
+  await tokenRepository.deleteById(token.id);
+  await mailer.sendEmailChangeNotification(email, newEmail);
+
+  return userService.normalize(newUser);
+}
+
 export const authService = {
   login,
   logout,
@@ -191,4 +283,7 @@ export const authService = {
 
   resetPassword,
   requestPasswordReset,
+
+  changeEmail,
+  requestEmailChange,
 };

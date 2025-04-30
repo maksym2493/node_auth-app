@@ -71,15 +71,28 @@ const resetPassword: RequestHandler = async (req, res) => {
   await sendAuthentication(res, normalizedUser);
 };
 
+const requestEmailChange: RequestHandler = async (req, res) => {
+  const user = req.user!;
+  const { password, newEmail } = req.body;
+
+  await authService.requestEmailChange(user, password, newEmail);
+
+  res.json({ message: 'OK' });
+};
+
+const changeEmail: RequestHandler = async (req, res) => {
+  const { token } = req.params;
+  const normalizedUser = await authService.changeEmail(token);
+
+  sendAuthentication(res, normalizedUser);
+};
+
 async function sendAuthentication(
   res: Response,
   normalizedUser: NormalizedUser,
 ) {
-  const accessToken = tokenService.generateAccessToken(normalizedUser);
-  const refreshToken = tokenService.generateRefreshToken(normalizedUser);
-
-  await tokenService.deleteByuserId(normalizedUser.id, TokenType.refresh);
-  await tokenService.create(normalizedUser.id, refreshToken, TokenType.refresh);
+  const { accessToken, refreshToken } =
+    await tokenService.createAuthTokens(normalizedUser);
 
   res.cookie('refreshToken', refreshToken, {
     maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -105,4 +118,7 @@ export const authController = {
 
   resetPassword,
   requestPasswordReset,
+
+  changeEmail,
+  requestEmailChange,
 };

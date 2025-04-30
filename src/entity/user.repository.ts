@@ -27,11 +27,19 @@ function changePassword(email: string, newPassword: string) {
   });
 }
 
+function changeEmail(id: string, newEmail: string) {
+  return db.user.update({
+    where: { id },
+    data: { email: newEmail },
+  });
+}
+
 export const userRepository = {
   getById,
   getByEmail,
 
   create,
   changeName,
+  changeEmail,
   changePassword,
 };

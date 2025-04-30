@@ -29,6 +29,23 @@ function create(
   return tokenRepository.create(userId, hashToken(token), tokenType, payload);
 }
 
+interface AuhtTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+async function createAuthTokens(
+  normalizedUser: NormalizedUser,
+): Promise<AuhtTokens> {
+  const accessToken = tokenService.generateAccessToken(normalizedUser);
+  const refreshToken = tokenService.generateRefreshToken(normalizedUser);
+
+  await tokenService.deleteByuserId(normalizedUser.id, TokenType.refresh);
+  await tokenService.create(normalizedUser.id, refreshToken, TokenType.refresh);
+
+  return { accessToken, refreshToken };
+}
+
 function getByToken(token: string): Promise<Token | null> {
   return tokenRepository.getByToken(hashToken(token));
 }
@@ -54,6 +71,7 @@ export const tokenService = {
   generateRefreshToken,
 
   create,
+  createAuthTokens,
 
   getByToken,
   getByUserId,

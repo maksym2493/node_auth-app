@@ -31,6 +31,10 @@ function getByToken(token: string): Promise<Token | null> {
   });
 }
 
+function getByPayload(payload: string): Promise<Token | null> {
+  return db.token.findFirst({ where: { payload } });
+}
+
 function getByUserId(
   userId: string,
   tokenType: TokenType,
@@ -45,6 +49,7 @@ export const tokenRepository = {
 
   getByToken,
   getByUserId,
+  getByPayload,
 
   deleteById,
   deleteByUserId,

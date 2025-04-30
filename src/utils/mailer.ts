@@ -30,7 +30,7 @@ async function sendActivationLink(email: string, activationToken: string) {
   await send(email, 'Account activation', html);
 }
 
-async function sendResetLink(email: string, resetToken: string) {
+async function sendResetPasswordLink(email: string, resetToken: string) {
   const link = `${CLIENT_URL}/reset-password/${resetToken}`;
 
   const html = `
@@ -41,8 +41,27 @@ async function sendResetLink(email: string, resetToken: string) {
   await send(email, 'Password Reset', html);
 }
 
+async function sendChangeEmailLink(email: string, token: string) {
+  const link = `${CLIENT_URL}/change-email/${token}`;
+
+  const html = `
+    <h1>Email Changing</h1>
+    <a href="${link}">${link}</a>
+  `;
+
+  await send(email, 'Email Verification', html);
+}
+
+async function sendEmailChangeNotification(email: string, newEmail: string) {
+  const html = `<h1>Your email was changed to ${newEmail}</h1>`;
+
+  await send(email, 'Email Change', html);
+}
+
 export const mailer = {
   send,
-  sendResetLink,
   sendActivationLink,
+  sendChangeEmailLink,
+  sendResetPasswordLink,
+  sendEmailChangeNotification,
 };
