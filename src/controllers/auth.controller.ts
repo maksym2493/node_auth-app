@@ -4,10 +4,12 @@ import { userService } from '../services/user.service.js';
 import { authService } from '../services/auth.service.js';
 
 import { userRepository } from '../entity/user.repository.js';
-import { refreshTokenRepository } from '../entity/refreshToken.repository.js';
+import { tokenRepository } from '../entity/token.repository.js';
 
 import { jwt } from '../utils/jwt.js';
 import { NormalizedUser } from '../types/NormalizedUser.js';
+import { TokenType } from '@prisma/client';
+import { tokenService } from '../services/token.service.js';
 
 const register: RequestHandler = async (req, res) => {
   const { email, password } = req.body;
@@ -19,8 +21,8 @@ const register: RequestHandler = async (req, res) => {
 };
 
 const activate: RequestHandler = async (req, res) => {
-  const { email, activationToken } = req.params;
-  const normalizedUser = await authService.activate(email, activationToken);
+  const { activationToken } = req.params;
+  const normalizedUser = await authService.activate(activationToken);
 
   await sendAuthentication(res, normalizedUser);
 };
@@ -52,11 +54,11 @@ async function sendAuthentication(
   res: Response,
   normalizedUser: NormalizedUser,
 ) {
-  const accessToken = jwt.generateAccessToken(normalizedUser);
-  const refreshToken = jwt.generateRefreshToken(normalizedUser);
+  const accessToken = tokenService.generateAccessToken(normalizedUser);
+  const refreshToken = tokenService.generateRefreshToken(normalizedUser);
 
-  await refreshTokenRepository.deleteByUserId(normalizedUser.id);
-  await refreshTokenRepository.create(normalizedUser.id, refreshToken);
+  await tokenService.deleteByuserId(normalizedUser.id, TokenType.refresh);
+  await tokenService.create(normalizedUser.id, refreshToken, TokenType.refresh);
 
   res.cookie('refreshToken', refreshToken, {
     maxAge: 7 * 24 * 60 * 60 * 1000,

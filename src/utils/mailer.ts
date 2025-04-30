@@ -20,7 +20,7 @@ function send(email: string, subject: string, html: string) {
 }
 
 async function sendActivationLink(email: string, activationToken: string) {
-  const link = `${CLIENT_URL}/activation/${email}/${activationToken}`;
+  const link = `${CLIENT_URL}/activation/${activationToken}`;
 
   const html = `
     <h1>Account activation</h1>

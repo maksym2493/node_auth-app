@@ -5,12 +5,9 @@ const changeName: RequestHandler = async (req, res) => {
   const user = req.user!;
   const { newName } = req.body;
 
-  const normalizedUser = await userService.changeName(user, newName);
+  await userService.changeName(user, newName);
 
-  res.json({
-    message: 'OK',
-    user: normalizedUser,
-  });
+  res.json({ message: 'OK' });
 };
 
 const changePassword: RequestHandler = async (req, res) => {

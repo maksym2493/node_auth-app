@@ -1,39 +1,16 @@
 import bcrypt from 'bcrypt';
-import crypto from 'crypto';
 
 import { jwt } from '../utils/jwt.js';
 import { mailer } from '../utils/mailer.js';
 import { ApiError } from '../exceptions/api.error.js';
+
+import { TokenType } from '@prisma/client';
 import { NormalizedUser } from '../types/NormalizedUser.js';
 
-import { User } from '@prisma/client';
 import { userService } from './user.service.js';
 import { userRepository } from '../entity/user.repository.js';
-import { refreshTokenRepository } from '../entity/refreshToken.repository.js';
-
-async function login(email: string, password: string): Promise<NormalizedUser> {
-  const user = await userRepository.getByEmail(email);
-
-  if (!user) {
-    throw ApiError.unauthorized('Invalid credentials', {
-      email: 'User not found',
-    });
-  }
-
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-
-  if (!isPasswordValid) {
-    throw ApiError.unauthorized('Invalid credentials', {
-      password: 'Invalid password',
-    });
-  }
-
-  if (user.activationToken) {
-    throw ApiError.unauthorized('Account is not activated');
-  }
-
-  return userService.normalize(user);
-}
+import { tokenRepository } from '../entity/token.repository.js';
+import { tokenService } from './token.service.js';
 
 async function register(
   name: string,
@@ -59,32 +36,60 @@ async function register(
   }
 
   const saltRounds = 10;
+  const activationToken = tokenService.generate();
   const hashedPassword = await bcrypt.hash(password, saltRounds);
-  const activationToken = crypto.randomBytes(32).toString('hex');
 
   await mailer.sendActivationLink(email, activationToken);
 
-  const user = await userRepository.create(
-    name,
-    email,
-    hashedPassword,
-    activationToken,
-  );
+  const user = await userRepository.create(name, email, hashedPassword);
+
+  await tokenService.create(user.id, activationToken, TokenType.activation);
 
   return userService.normalize(user);
 }
 
-async function activate(
-  email: string,
-  activationToken: string,
-): Promise<NormalizedUser> {
+async function login(email: string, password: string): Promise<NormalizedUser> {
   const user = await userRepository.getByEmail(email);
 
-  if (!user || user.activationToken !== activationToken) {
+  if (!user) {
+    throw ApiError.unauthorized('Invalid credentials', {
+      email: 'User not found',
+    });
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordValid) {
+    throw ApiError.unauthorized('Invalid credentials', {
+      password: 'Invalid password',
+    });
+  }
+
+  const token = await tokenService.getByUserId(user.id, TokenType.activation);
+
+  if (token) {
+    throw ApiError.unauthorized('Account is not activated');
+  }
+
+  return userService.normalize(user);
+}
+
+async function activate(activationToken: string): Promise<NormalizedUser> {
+  const token = await tokenService.getByToken(
+    activationToken,
+    TokenType.activation,
+  );
+
+  if (!token) {
     throw ApiError.notFound();
   }
 
-  const activatedUser = await userRepository.activate(email);
+  await tokenService.deleteById(token.id);
+  const activatedUser = await userRepository.get(token.userId);
+
+  if (!activatedUser) {
+    throw ApiError.notFound();
+  }
 
   return userService.normalize(activatedUser);
 }
@@ -113,7 +118,7 @@ async function logout(refreshToken: string) {
     | undefined;
 
   if (userData) {
-    await refreshTokenRepository.deleteByUserId(userData.id);
+    await tokenRepository.deleteByUserId(userData.id, TokenType.refresh);
   }
 }
 

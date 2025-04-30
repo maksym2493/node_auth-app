@@ -34,8 +34,16 @@ async function changeName(
   { email, name }: User,
   newName: string,
 ): Promise<NormalizedUser> {
+  const validationError = validateName(newName);
+
+  if (validationError) {
+    throw ApiError.badRequest('Invalid credentials', {
+      newName: validationError,
+    });
+  }
+
   if (name === newName) {
-    throw ApiError.badRequest('Invalid name', {
+    throw ApiError.badRequest('Invalid credentials', {
       newNme: 'The current name is the same as the new one',
     });
   }
@@ -52,23 +60,27 @@ async function changePassword(
   newPassword: string,
   passwordConfirmation: string,
 ): Promise<NormalizedUser> {
+  const errors: Record<string, string> = {};
   const validationError = userService.validatePassword(newPassword);
 
   if (validationError) {
-    throw ApiError.badRequest('Invalid credentials', {
-      newPassword: validationError,
-    });
+    errors.newPassword = validationError;
   }
 
   if (newPassword !== passwordConfirmation) {
-    throw ApiError.badRequest('Invalid credentials', {
-      passwordConfirmation:
-        'Password confirmation does not match the new password',
-    });
+    errors.passwordConfirmation =
+      'Password confirmation does not match the new password';
+  }
+
+  if (!password) {
+    errors.password = 'Password is required';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    throw ApiError.badRequest('Invalid credentials', errors);
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
-
   if (!isPasswordValid) {
     throw ApiError.badRequest('Invalid credentials', {
       password: 'The current password you entered is incorrect',
