@@ -189,7 +189,6 @@ async function requestEmailChange(
 ): Promise<void> {
   const errors = {
     newEmail: userService.validateEmail(newEmail),
-    password: userService.validatePassword(password),
   };
 
   if (newEmail === user.email) {
