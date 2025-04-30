@@ -30,6 +30,11 @@ function normalize({ id, name, email }: User): NormalizedUser {
   return { id, name, email };
 }
 
+async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 10;
+  return bcrypt.hash(password, saltRounds);
+}
+
 async function changeName(
   { email, name }: User,
   newName: string,
@@ -61,13 +66,15 @@ async function changePassword(
   passwordConfirmation: string,
 ): Promise<NormalizedUser> {
   const errors: Record<string, string> = {};
-  const validationError = userService.validatePassword(newPassword);
+  const validationError = validatePassword(newPassword);
 
   if (validationError) {
     errors.newPassword = validationError;
   }
 
-  if (newPassword !== passwordConfirmation) {
+  if (!passwordConfirmation) {
+    errors.passwordConfirmation = 'Password confirmation is required';
+  } else if (newPassword !== passwordConfirmation) {
     errors.passwordConfirmation =
       'Password confirmation does not match the new password';
   }
@@ -93,7 +100,7 @@ async function changePassword(
     });
   }
 
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const hashedPassword = await hashPassword(newPassword);
 
   const newUser = await userRepository.changePassword(
     user.email,
@@ -105,6 +112,7 @@ async function changePassword(
 
 export const userService = {
   normalize,
+  hashPassword,
   validateName,
   validateEmail,
   validatePassword,

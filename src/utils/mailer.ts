@@ -30,7 +30,19 @@ async function sendActivationLink(email: string, activationToken: string) {
   await send(email, 'Account activation', html);
 }
 
+async function sendResetLink(email: string, resetToken: string) {
+  const link = `${CLIENT_URL}/reset-password/${resetToken}`;
+
+  const html = `
+    <h1>Password Reset</h1>
+    <a href="${link}">${link}</a>
+  `;
+
+  await send(email, 'Password Reset', html);
+}
+
 export const mailer = {
   send,
+  sendResetLink,
   sendActivationLink,
 };

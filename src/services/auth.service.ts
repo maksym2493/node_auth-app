@@ -35,9 +35,8 @@ async function register(
     });
   }
 
-  const saltRounds = 10;
   const activationToken = tokenService.generate();
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
+  const hashedPassword = await userService.hashPassword(password);
 
   await mailer.sendActivationLink(email, activationToken);
 
@@ -75,17 +74,14 @@ async function login(email: string, password: string): Promise<NormalizedUser> {
 }
 
 async function activate(activationToken: string): Promise<NormalizedUser> {
-  const token = await tokenService.getByToken(
-    activationToken,
-    TokenType.activation,
-  );
+  const token = await tokenService.getByToken(activationToken);
 
   if (!token) {
     throw ApiError.notFound();
   }
 
   await tokenService.deleteById(token.id);
-  const activatedUser = await userRepository.get(token.userId);
+  const activatedUser = await userRepository.getById(token.userId);
 
   if (!activatedUser) {
     throw ApiError.notFound();
@@ -112,7 +108,7 @@ async function refresh(refreshToken: string): Promise<NormalizedUser> {
   return userService.normalize(user);
 }
 
-async function logout(refreshToken: string) {
+async function logout(refreshToken: string): Promise<void> {
   const userData = jwt.validateRefreshToken(refreshToken) as
     | NormalizedUser
     | undefined;
@@ -122,10 +118,77 @@ async function logout(refreshToken: string) {
   }
 }
 
+async function requestPasswordReset(email: string): Promise<void> {
+  const user = await userRepository.getByEmail(email);
+
+  if (!user) {
+    throw ApiError.unauthorized('Invalid credentials', {
+      email: 'User not found',
+    });
+  }
+
+  const resetToken = tokenService.generate();
+
+  await mailer.sendResetLink(email, resetToken);
+  await tokenService.create(user.id, resetToken, TokenType.resetPassword);
+}
+
+async function resetPassword(
+  resetToken: string,
+  newPassword: string,
+  passwordConfirmation: string,
+): Promise<NormalizedUser> {
+  if (!resetToken) {
+    throw ApiError.unauthorized('Token is required');
+  }
+
+  const errors: Record<string, string> = {};
+  const validationError = userService.validatePassword(newPassword);
+
+  if (validationError) {
+    errors.newPassword = validationError;
+  }
+
+  if (!passwordConfirmation) {
+    errors.passwordConfirmation = 'Password confirmation is required';
+  } else if (newPassword !== passwordConfirmation) {
+    errors.passwordConfirmation =
+      'Password confirmation does not match the new password';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    throw ApiError.badRequest('Invalid credentials', errors);
+  }
+
+  const token = await tokenService.getByToken(resetToken);
+
+  if (!token) {
+    throw ApiError.unauthorized('Invalid token');
+  }
+
+  const user = await userRepository.getById(token.userId);
+
+  if (!user) {
+    throw ApiError.unauthorized('Invalid token');
+  }
+
+  const updatedUser = await userRepository.changePassword(
+    user.email,
+    await userService.hashPassword(newPassword),
+  );
+
+  await tokenService.deleteById(token.id);
+
+  return userService.normalize(updatedUser);
+}
+
 export const authService = {
   login,
   logout,
   refresh,
   register,
   activate,
+
+  resetPassword,
+  requestPasswordReset,
 };

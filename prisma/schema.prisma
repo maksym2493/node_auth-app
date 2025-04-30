@@ -31,6 +31,7 @@ model Token {
   userId          String    @db.Uuid @map("user_id")
   token           String    @unique
   tokenType       TokenType @map("token_type")
+  payload         String?
   createdAt       DateTime  @default(now()) @map("created_at")
 
   user            User      @relation(fields: [userId], references: [id])

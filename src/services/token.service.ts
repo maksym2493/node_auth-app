@@ -24,15 +24,13 @@ function create(
   userId: string,
   token: string,
   tokenType: TokenType,
+  payload?: string,
 ): Promise<Token> {
-  return tokenRepository.create(userId, hashToken(token), tokenType);
+  return tokenRepository.create(userId, hashToken(token), tokenType, payload);
 }
 
-function getByToken(
-  token: string,
-  tokenType: TokenType,
-): Promise<Token | null> {
-  return tokenRepository.getByToken(hashToken(token), tokenType);
+function getByToken(token: string): Promise<Token | null> {
+  return tokenRepository.getByToken(hashToken(token));
 }
 
 function getByUserId(

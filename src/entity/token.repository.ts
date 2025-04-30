@@ -5,12 +5,14 @@ function create(
   userId: string,
   token: string,
   tokenType: TokenType,
+  payload?: string,
 ): Promise<Token> {
   return db.token.create({
     data: {
       userId,
       token,
       tokenType,
+      payload,
     },
   });
 }
@@ -23,12 +25,9 @@ function deleteByUserId(userId: string, tokenType: TokenType) {
   return db.token.deleteMany({ where: { userId, tokenType } });
 }
 
-function getByToken(
-  token: string,
-  tokenType: TokenType,
-): Promise<Token | null> {
+function getByToken(token: string): Promise<Token | null> {
   return db.token.findUnique({
-    where: { token, tokenType },
+    where: { token },
   });
 }
 

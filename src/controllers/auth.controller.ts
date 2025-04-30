@@ -21,8 +21,8 @@ const register: RequestHandler = async (req, res) => {
 };
 
 const activate: RequestHandler = async (req, res) => {
-  const { activationToken } = req.params;
-  const normalizedUser = await authService.activate(activationToken);
+  const { token } = req.params;
+  const normalizedUser = await authService.activate(token);
 
   await sendAuthentication(res, normalizedUser);
 };
@@ -48,6 +48,27 @@ const logout: RequestHandler = async (req, res) => {
 
   res.clearCookie('refreshToken');
   res.sendStatus(204);
+};
+
+const requestPasswordReset: RequestHandler = async (req, res) => {
+  const { email } = req.body;
+
+  await authService.requestPasswordReset(email);
+
+  res.json({ message: 'OK' });
+};
+
+const resetPassword: RequestHandler = async (req, res) => {
+  const { token } = req.params;
+  const { newPassword, passwordConfirmation } = req.body;
+
+  const normalizedUser = await authService.resetPassword(
+    token,
+    newPassword,
+    passwordConfirmation,
+  );
+
+  await sendAuthentication(res, normalizedUser);
 };
 
 async function sendAuthentication(
@@ -81,4 +102,7 @@ export const authController = {
   login,
   logout,
   refresh,
+
+  resetPassword,
+  requestPasswordReset,
 };

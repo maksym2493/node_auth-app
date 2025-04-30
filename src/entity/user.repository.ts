@@ -1,16 +1,12 @@
 import { db } from '../utils/db.js';
 import { User } from '@prisma/client';
 
-function get(id: string): Promise<User | null> {
+function getById(id: string): Promise<User | null> {
   return db.user.findUnique({ where: { id } });
 }
 
 function getByEmail(email: string): Promise<User | null> {
   return db.user.findUnique({ where: { email } });
-}
-
-function getByResetToken(resetToken: string): Promise<User | null> {
-  return db.user.findFirst({ where: { resetToken } });
 }
 
 function create(name: string, email: string, password: string): Promise<User> {
@@ -32,9 +28,8 @@ function changePassword(email: string, newPassword: string) {
 }
 
 export const userRepository = {
-  get,
+  getById,
   getByEmail,
-  getByResetToken,
 
   create,
   changeName,
