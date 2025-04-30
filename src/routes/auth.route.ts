@@ -21,8 +21,4 @@ authRoute.post(
   authController.requestEmailChange,
 );
 
-authRoute.get(
-  '/change-email/:token',
-  authMiddleware,
-  authController.changeEmail,
-);
+authRoute.get('/change-email/:token', authController.changeEmail);

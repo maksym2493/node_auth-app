@@ -84,7 +84,7 @@ const changeEmail: RequestHandler = async (req, res) => {
   const { token } = req.params;
   const normalizedUser = await authService.changeEmail(token);
 
-  sendAuthentication(res, normalizedUser);
+  await sendAuthentication(res, normalizedUser);
 };
 
 async function sendAuthentication(

@@ -29,18 +29,18 @@ function create(
   return tokenRepository.create(userId, hashToken(token), tokenType, payload);
 }
 
-interface AuhtTokens {
+interface AuthTokens {
   accessToken: string;
   refreshToken: string;
 }
 
 async function createAuthTokens(
   normalizedUser: NormalizedUser,
-): Promise<AuhtTokens> {
+): Promise<AuthTokens> {
   const accessToken = tokenService.generateAccessToken(normalizedUser);
   const refreshToken = tokenService.generateRefreshToken(normalizedUser);
 
-  await tokenService.deleteByuserId(normalizedUser.id, TokenType.refresh);
+  await tokenService.deleteByUserId(normalizedUser.id, TokenType.refresh);
   await tokenService.create(normalizedUser.id, refreshToken, TokenType.refresh);
 
   return { accessToken, refreshToken };
@@ -61,7 +61,7 @@ function deleteById(id: number): Promise<Token> {
   return tokenRepository.deleteById(id);
 }
 
-function deleteByuserId(userId: string, tokenType: TokenType) {
+function deleteByUserId(userId: string, tokenType: TokenType) {
   return tokenRepository.deleteByUserId(userId, tokenType);
 }
 
@@ -77,5 +77,5 @@ export const tokenService = {
   getByUserId,
 
   deleteById,
-  deleteByuserId,
+  deleteByUserId,
 };

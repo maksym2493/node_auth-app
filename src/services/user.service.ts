@@ -49,7 +49,7 @@ async function changeName(
 
   if (name === newName) {
     throw ApiError.badRequest('Invalid credentials', {
-      newNme: 'The current name is the same as the new one',
+      newName: 'The current name is the same as the new one',
     });
   }
 

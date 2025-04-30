@@ -4,8 +4,8 @@ import { NormalizedUser } from '../types/NormalizedUser.js';
 const JWT_ACCESS_KEY = process.env.JWT_ACCESS_KEY as string;
 const JWT_REFRESH_KEY = process.env.JWT_REFRESH_KEY as string;
 
-function generateAccessToken(normilizedUser: NormalizedUser) {
-  return jsonwebtoken.sign(normilizedUser, JWT_ACCESS_KEY, {
+function generateAccessToken(normalizedUser: NormalizedUser) {
+  return jsonwebtoken.sign(normalizedUser, JWT_ACCESS_KEY, {
     expiresIn: '10m',
   });
 }
@@ -16,8 +16,8 @@ function validateAccessToken(accessToken: string) {
   } catch (_) {}
 }
 
-function generateRefreshToken(normilizedUser: NormalizedUser) {
-  return jsonwebtoken.sign(normilizedUser, JWT_REFRESH_KEY, {
+function generateRefreshToken(normalizedUser: NormalizedUser) {
+  return jsonwebtoken.sign(normalizedUser, JWT_REFRESH_KEY, {
     expiresIn: '7d',
   });
 }
